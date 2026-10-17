@@ -1,0 +1,63 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NexAi</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101114;color:#f3f3f5;
+font-family:Arial,sans-serif}
+header{padding:20px;border-bottom:1px solid #303038}
+.logo{font-size:25px;font-weight:700;color:#a99bff}
+main{max-width:760px;margin:auto;padding:20px}
+#chat{min-height:55vh;padding:12px 0}
+.msg{padding:14px;margin:12px 0;border-radius:14px;
+background:#202127;white-space:pre-wrap;overflow-wrap:anywhere}
+.user{background:#302b49}
+form{display:flex;gap:8px;position:sticky;bottom:0;
+background:#101114;padding:12px 0}
+input{flex:1;min-width:0;padding:14px;border-radius:12px;
+border:1px solid #42424b;background:#202127;color:white}
+button{padding:12px;border:0;border-radius:12px;
+background:#a99bff;color:#17151f;font-weight:bold}
+small{color:#aaa}
+</style>
+</head>
+<body>
+<header><div class="logo">NexAi</div>
+<small>Твой русскоязычный ИИ-проект</small></header>
+<main>
+<div id="chat">
+<div class="msg">Привет! Я NexAi. Интерфейс создан.
+Подключение языковой модели ещё не настроено.</div>
+</div>
+<form id="form">
+<input id="question" placeholder="Напиши сообщение..."
+autocomplete="off" required>
+<button>Отправить</button>
+</form>
+</main>
+<script>
+const form=document.getElementById('form');
+const input=document.getElementById('question');
+const chat=document.getElementById('chat');
+form.addEventListener('submit',e=>{
+ e.preventDefault();
+ const text=input.value.trim();
+ if(!text)return;
+ const msg=document.createElement('div');
+ msg.className='msg user';
+ msg.textContent=text;
+ chat.appendChild(msg);
+ const reply=document.createElement('div');
+ reply.className='msg';
+ reply.textContent='Модель пока не подключена. Следующий этап — настроить сервер ответов.';
+ chat.appendChild(reply);
+ input.value='';
+ window.scrollTo(0,document.body.scrollHeight);
+});
+</script>
+</body>
+</html>
