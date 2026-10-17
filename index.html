@@ -3,60 +3,163 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NexAi</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#101114;color:#f3f3f5;
-font-family:Arial,sans-serif}
+body{margin:0;background:#101114;color:#f4f4f5;font-family:Arial,sans-serif}
 header{padding:20px;border-bottom:1px solid #303038}
-.logo{font-size:25px;font-weight:700;color:#a99bff}
-main{max-width:760px;margin:auto;padding:20px}
-#chat{min-height:55vh;padding:12px 0}
-.msg{padding:14px;margin:12px 0;border-radius:14px;
-background:#202127;white-space:pre-wrap;overflow-wrap:anywhere}
+.logo{font-size:26px;font-weight:bold;color:#a99bff}
+main{max-width:760px;margin:auto;padding:18px}
+#status{color:#aaa;font-size:13px}
+#chat{min-height:38vh;padding:10px 0}
+.msg{background:#202127;padding:14px;border-radius:13px;margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere}
 .user{background:#302b49}
-form{display:flex;gap:8px;position:sticky;bottom:0;
-background:#101114;padding:12px 0}
-input{flex:1;min-width:0;padding:14px;border-radius:12px;
-border:1px solid #42424b;background:#202127;color:white}
-button{padding:12px;border:0;border-radius:12px;
-background:#a99bff;color:#17151f;font-weight:bold}
+input{min-width:0;flex:1;padding:13px;border-radius:10px;border:1px solid #444;background:#202127;color:white}
+button{padding:12px;border:0;border-radius:10px;background:#a99bff;color:#17151f;font-weight:bold}
+form,.tools{display:flex;gap:8px;margin:10px 0}
+.tools input{width:100%}
 small{color:#aaa}
 </style>
 </head>
 <body>
-<header><div class="logo">NexAi</div>
-<small>Твой русскоязычный ИИ-проект</small></header>
+<header>
+  <div class="logo">NexAi</div>
+  <small>Русскоязычный ИИ-проект</small>
+</header>
 <main>
-<div id="chat">
-<div class="msg">Привет! Я NexAi. Интерфейс создан.
-Подключение языковой модели ещё не настроено.</div>
-</div>
-<form id="form">
-<input id="question" placeholder="Напиши сообщение..."
-autocomplete="off" required>
-<button>Отправить</button>
-</form>
+  <p id="status">Подключение к базе знаний...</p>
+  <div id="chat">
+    <div class="msg">Привет! Я NexAi. Пока подключена база знаний, а языковую модель настроим отдельно.</div>
+  </div>
+  <form id="askForm">
+    <input id="question" placeholder="Введи вопрос..." required>
+    <button>Найти</button>
+  </form>
+  <div class="tools">
+    <button id="save">Сохранить вопрос и ответ</button>
+  </div>
+  <h3>Поиск по базе знаний</h3>
+  <form id="searchForm">
+    <input id="searchQuery" placeholder="Что найти в базе?" required>
+    <button>Искать</button>
+  </form>
 </main>
-<script>
-const form=document.getElementById('form');
-const input=document.getElementById('question');
-const chat=document.getElementById('chat');
-form.addEventListener('submit',e=>{
- e.preventDefault();
- const text=input.value.trim();
- if(!text)return;
- const msg=document.createElement('div');
- msg.className='msg user';
- msg.textContent=text;
- chat.appendChild(msg);
- const reply=document.createElement('div');
- reply.className='msg';
- reply.textContent='Модель пока не подключена. Следующий этап — настроить сервер ответов.';
- chat.appendChild(reply);
- input.value='';
- window.scrollTo(0,document.body.scrollHeight);
+
+<script type="module">
+import { createClient } from
+'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'sb_secret_Fl_rVSHztjcDQaMpxaw34w_Ld2nkhi9';
+const SUPABASE_KEY = 'sb_publishable_oCZinACdnUcajB6yJGnXuA_iTKmEJPf';
+
+const status = document.getElementById('status');
+const chat = document.getElementById('chat');
+const question = document.getElementById('question');
+let currentQuestion = '';
+let currentAnswer = '';
+
+function showMessage(text, cls = '') {
+  const el = document.createElement('div');
+  el.className = 'msg ' + cls;
+  el.textContent = text;
+  chat.appendChild(el);
+}
+
+let db;
+
+try {
+  if (SUPABASE_URL.includes('ВСТАВЬ_') ||
+      SUPABASE_KEY.includes('ВСТАВЬ_')) {
+    throw new Error('Сначала вставь URL и Publishable key.');
+  }
+  db = createClient(SUPABASE_URL, SUPABASE_KEY);
+  const { error } = await db.from('knowledge')
+    .select('id').limit(1);
+  if (error) throw error;
+  status.textContent = 'База знаний подключена.';
+} catch (e) {
+  status.textContent = 'Ошибка подключения: ' + e.message;
+}
+
+document.getElementById('askForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const q = question.value.trim();
+  if (!q || !db) return;
+
+  currentQuestion = q;
+  currentAnswer = '';
+
+  showMessage('Ты: ' + q, 'user');
+
+  const { data, error } = await db.from('knowledge')
+    .select('question,answer,sources')
+    .ilike('question', '%' + q.replace(/[%_]/g, '') + '%')
+    .limit(5);
+
+  if (error) {
+    currentAnswer = 'Не удалось выполнить поиск.';
+    showMessage(currentAnswer);
+    return;
+  }
+
+  if (data.length) {
+    currentAnswer = data.map((item, i) =>
+      (i + 1) + '. ' + item.answer +
+      '\nИсточники: ' + JSON.stringify(item.sources || [])
+    ).join('\n\n');
+    showMessage('Найдено в базе:\n' + currentAnswer);
+  } else {
+    currentAnswer = 'В базе пока нет ответа на этот вопрос. ' +
+      'Языковая модель ещё не подключена.';
+    showMessage(currentAnswer);
+  }
+});
+
+document.getElementById('save').addEventListener('click', async () => {
+  if (!db || !currentQuestion || !currentAnswer) {
+    status.textContent = 'Сначала выполни поиск по вопросу.';
+    return;
+  }
+
+  const answer = prompt(
+    'Проверь ответ и исправь его, если нужно:',
+    currentAnswer
+  );
+  if (answer === null || !answer.trim()) return;
+
+  const { error } = await db.from('knowledge').insert({
+    question: currentQuestion,
+    answer: answer.trim(),
+    sources: []
+  });
+
+  status.textContent = error
+    ? 'Ошибка сохранения: ' + error.message
+    : 'Ответ сохранён в базе знаний.';
+});
+
+document.getElementById('searchForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!db) return;
+
+  const q = document.getElementById('searchQuery').value.trim();
+  const { data, error } = await db.from('knowledge')
+    .select('question,answer,sources,created_at')
+    .ilike('question', '%' + q.replace(/[%_]/g, '') + '%')
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    status.textContent = 'Ошибка поиска: ' + error.message;
+    return;
+  }
+
+  showMessage(data.length
+    ? 'Результаты поиска:\n' + data.map(x =>
+        'Вопрос: ' + x.question + '\nОтвет: ' + x.answer
+      ).join('\n\n')
+    : 'По запросу ничего не найдено.');
 });
 </script>
 </body>
